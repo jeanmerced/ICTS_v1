@@ -1,0 +1,17 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ICTS_API_v1", "ICTS_API_v1\ICTS_API_v1.csproj", "{7BA0928C-B5BC-4F5C-8EB6-62A41E3BC1D5}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7BA0928C-B5BC-4F5C-8EB6-62A41E3BC1D5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7BA0928C-B5BC-4F5C-8EB6-62A41E3BC1D5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7BA0928C-B5BC-4F5C-8EB6-62A41E3BC1D5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7BA0928C-B5BC-4F5C-8EB6-62A41E3BC1D5}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
