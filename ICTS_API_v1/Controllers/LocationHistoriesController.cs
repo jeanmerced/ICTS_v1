@@ -1,61 +1,93 @@
-//using ICTS_API.Models;
-//using Microsoft.AspNetCore.Mvc;
-//using Microsoft.EntityFrameworkCore;
-//using System.Collections.Generic;
-//using System.Linq;
-//using System.Threading.Tasks;
+using ICTS_API_v1.Models;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
-//namespace ICTS_API.Controllers
-//{
-//    public class LocationHistoriesController : Controller
-//    {
-//        private readonly MyWebApiContext _context;
+namespace ICTS_API_v1.Controllers
+{
+    [Route("locationhistories")]
+    [ApiController]
+    public class LocationHistoriesController : Controller
+    {
+        private readonly ICTS_Context _context;
 
-//        public LocationHistoriesController(MyWebApiContext context)
-//        {
-//            _context = context;
-//        }
+        public LocationHistoriesController(ICTS_Context context)
+        {
+            _context = context;
+        }
 
-//        [Route("location-histories/cartid/{CartID}")]
-//        [HttpGet]
-//        public async Task<ActionResult<IEnumerable<LocationHistory>>> GetLocationHistoryByCartID(int CartID)
-//        {
-//            return await _context.LocationHistories.Where(lh => lh.CartID == CartID).ToListAsync();
-//        }
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<LocationHistory>>> GetAllLocationHistories()
+        {
+            return await _context.LocationHistories.ToListAsync();
+        }
 
-//        [Route("location-histories")]
-//        [HttpPost]
-//        public async Task<ActionResult<LocationHistory>> AddLocationToHistory(LocationHistory locationHistory)
-//        {
-//            _context.LocationHistories.Add(locationHistory);
-//            await _context.SaveChangesAsync();
+        [Route("{RecordId}")]
+        [HttpGet]
+        public async Task<ActionResult<LocationHistory>> GetLocationHistoryByRecordId(int RecordId)
+        {
+            var locationHistory = await _context.LocationHistories.FirstOrDefaultAsync(lh => lh.RecordId == RecordId);
 
-//            return CreatedAtAction(nameof(GetLocationHistoryByCartID), new { cartID = locationHistory.CartID }, locationHistory);
-//        }
+            if (locationHistory == null)
+            {
+                return NotFound();
+            }
 
-//        [Route("location-histories/{RecordID}")]
-//        [HttpDelete]
-//        public async Task<IActionResult> RemoveLocationFromHistory(int RecordID)
-//        {
-//            var locationHistory = await _context.LocationHistories.FindAsync(RecordID);
+            return locationHistory;
+        }
 
-//            if (locationHistory == null)
-//            {
-//                return NotFound();
-//            }
+        [Route("cartid/{CartId}")]
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<LocationHistory>>> GetLocationHistoriesByCartId(int CartId)
+        {
+            return await _context.LocationHistories.Where(lh => lh.CartId == CartId).ToListAsync();
+        }
 
-//            _context.LocationHistories.Remove(locationHistory);
-//            await _context.SaveChangesAsync();
+        [HttpPost]
+        public async Task<ActionResult<LocationHistory>> AddLocationToHistory(LocationHistoryDTO locationHistoryDTO)
+        {
+            var locationHistory = new LocationHistory
+            {
+                CartId = locationHistoryDTO.CartId,
+                SiteId = locationHistoryDTO.SiteId,
+                RecordDate = DateTime.Now
+            };
 
-//            return NoContent();
-//        }
+            _context.LocationHistories.Add(locationHistory);
+            await _context.SaveChangesAsync();
 
-//        //TODO:UpdateLocationHistories*********************************************************************************
-//        //[Route("location-histories")]
-//        //[HttpPut]
-//        //public void UpdateLocationHistories()
-//        //{
+            return CreatedAtAction(
+                nameof(GetLocationHistoryByRecordId),
+                new { recordId = locationHistory.RecordId },
+                locationHistory);
+        }
 
-//        //}
-//    }
-//}
+        [Route("{RecordId}")]
+        [HttpDelete]
+        public async Task<IActionResult> RemoveLocationFromHistory(int RecordId)
+        {
+            var locationHistory = await _context.LocationHistories.FindAsync(RecordId);
+
+            if (locationHistory == null)
+            {
+                return NotFound();
+            }
+
+            _context.LocationHistories.Remove(locationHistory);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+        }
+
+        //TODO:UpdateLocationHistories*********************************************************************************
+        //[Route("location-histories")]
+        //[HttpPut]
+        //public void UpdateLocationHistories()
+        //{
+
+        //}
+    }
+}

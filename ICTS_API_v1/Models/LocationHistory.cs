@@ -6,16 +6,14 @@ namespace ICTS_API_v1.Models
     public class LocationHistory
     {
         [Key]
-        public int RecordID { get; set; }
+        public int RecordId { get; set; }
 
-        public DateTime DateAdded { get; set; }
+        public int? CartId { get; set; }
 
-        public double XCoordinate { get; set; }
+        public int? SiteId { get; set; }
 
-        public double YCoordinate { get; set; }
+        public DateTime RecordDate { get; set; }
 
-        public int CartID { get; set; }
-
-        public int SiteID { get; set; }
+       // public Type CartCoordinates { get; set; }
     }
 }
