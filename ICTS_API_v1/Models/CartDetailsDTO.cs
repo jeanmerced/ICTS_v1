@@ -58,10 +58,13 @@ namespace ICTS_API_v1.Models
                 {
                     foreach (var product in Products)
                     {
-                        var dayDifference = (product.ExpirationDate - DateTime.Today).TotalDays;
-                        if (dayDifference <= 7 && dayDifference > 0)
+                        if (product.ExpirationDate.HasValue)
                         {
-                            nearExpirationDateWarningCount++;
+                            var dayDifference = (product.ExpirationDate.Value - DateTime.Today).TotalDays;
+                            if (dayDifference <= 7 && dayDifference > 0)
+                            {
+                                nearExpirationDateWarningCount++;
+                            }
                         }
                     }
                 }
@@ -78,10 +81,13 @@ namespace ICTS_API_v1.Models
                 {
                     foreach (var product in Products)
                     {
-                        var dayDifference = (product.ExpirationDate - DateTime.Today).TotalDays;
-                        if (dayDifference <= 0)
+                        if (product.ExpirationDate.HasValue)
                         {
-                            expiredWarningCount++;
+                            var dayDifference = (product.ExpirationDate.Value - DateTime.Today).TotalDays;
+                            if (dayDifference <= 0)
+                            {
+                                expiredWarningCount++;
+                            }
                         }
                     }
                 }

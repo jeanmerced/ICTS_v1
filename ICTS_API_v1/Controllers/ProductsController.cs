@@ -1,6 +1,8 @@
 using ICTS_API_v1.Models;
+using ICTS_API_v1.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -12,10 +14,12 @@ namespace ICTS_API_v1.Controllers
     public class ProductsController : Controller
     {
         private readonly ICTS_Context _context;
+        private readonly MPROCProductsService _productsService;
 
-        public ProductsController(ICTS_Context context)
+        public ProductsController(ICTS_Context context, MPROCProductsService productsService)
         {
             _context = context;
+            _productsService = productsService;
         }
 
         [Route("cartid/{CartId}")]
@@ -51,13 +55,31 @@ namespace ICTS_API_v1.Controllers
         [HttpPost]
         public async Task<ActionResult<ProductDetailsDTO>> AddProductToCart(ProductDTO productDTO)
         {
+            var mPROCProduct = GetMPROCProductByLotId(productDTO.LotId);
+
+            if (mPROCProduct == null)
+            {
+                return BadRequest();
+            }
+
+            DateTime? expDate;
+            try
+            {
+                expDate = DateTime.Parse(mPROCProduct.USEBEFOREDATE);
+            }
+            catch (FormatException e)
+            {
+                Console.WriteLine("{0} Exception caught.", e);
+                expDate = null;
+            }
+
             var product = new Product
             {
-                LotId = productDTO.LotId,
-                ProductName = productDTO.ProductName,
-                ExpirationDate = productDTO.ExpirationDate,
-                Quantity = productDTO.Quantity,
-                VirtualSiteName = productDTO.VirtualSiteName,
+                LotId = mPROCProduct.LOTID,
+                ProductName = mPROCProduct.PRODUCTNAME,
+                ExpirationDate = expDate,
+                Quantity = mPROCProduct.COMPONENTQTY,
+                VirtualSiteName = mPROCProduct.STEPNAME,
                 CartId = productDTO.CartId
             };
 
@@ -93,6 +115,17 @@ namespace ICTS_API_v1.Controllers
         //{
         //    return null;
         //}
+
+        private MPROCProduct GetMPROCProductByLotId(string LotId)
+        {
+            var products = _productsService.GetMPROCProducts();
+            foreach (var product in products)
+            {
+                if (product.LOTID == LotId)
+                    return product;
+            }
+            return null;
+        }
 
         private static ProductDetailsDTO ProductsToProductDetailsDTO(Product product) =>
             new ProductDetailsDTO

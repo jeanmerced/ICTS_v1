@@ -11,7 +11,7 @@ namespace ICTS_API_v1.Models
 
         public string ProductName { get; set; }
 
-        public DateTime ExpirationDate { get; set; }
+        public DateTime? ExpirationDate { get; set; }
 
         public int Quantity { get; set; }
 
