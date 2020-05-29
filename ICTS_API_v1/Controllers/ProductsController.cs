@@ -22,6 +22,78 @@ namespace ICTS_API_v1.Controllers
             _productsService = productsService;
         }
 
+        [HttpPost]
+        public async Task<ActionResult<ProductDetailsDTO>> AddProductToCart(ProductDTO productDTO)
+        {
+            var cartIdExists = _context.Carts.Any(c => c.CartId == productDTO.CartId);
+            var productInCart = _context.Products.Any(p => p.LotId == productDTO.LotId);
+
+            //check if cartid exists
+            if (!cartIdExists && productDTO.CartId != null)
+            {
+                //add error message
+                ModelState.AddModelError("CartId", "Cart with CartId=" + productDTO.CartId + " does not exist.");
+            }
+
+            //check if product is already associated with another cart
+            if (productInCart)
+            {
+                //add error message
+                ModelState.AddModelError("LotId", "Product with LotId=" + productDTO.LotId + " is already associated with another cart.");
+            }
+
+            //if model is not valid return error messages
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new { errors = ModelState.ToDictionary(x => x.Key, x => x.Value.Errors.Select(e => e.ErrorMessage).ToArray()) });
+            }
+
+            //looks for product with given lotid from MPROC's data
+            var mPROCProduct = GetMPROCProductByLotId(productDTO.LotId);
+
+            //if product does not exist in MPROC's data return error message
+            if (mPROCProduct == null)
+            {
+                //add error message
+                ModelState.AddModelError("LotId", "Product with LotId=" + productDTO.LotId + " does not exist.");
+                return BadRequest(new { errors = ModelState.ToDictionary(x => x.Key, x => x.Value.Errors.Select(e => e.ErrorMessage).ToArray()) });
+
+            }
+
+            //tries to parse expiration date to DateTime. if exception, expDate = null
+            DateTime? expDate;
+            try
+            {
+                expDate = DateTime.Parse(mPROCProduct.USEBEFOREDATE);
+            }
+            catch (FormatException e)
+            {
+                Console.WriteLine("{0} Exception caught.", e);
+                expDate = null;
+            }
+
+            //create product
+            var product = new Product
+            {
+                LotId = mPROCProduct.LOTID,
+                ProductName = mPROCProduct.PRODUCTNAME,
+                ExpirationDate = expDate,
+                Quantity = mPROCProduct.COMPONENTQTY,
+                VirtualSiteName = mPROCProduct.STEPNAME,
+                CartId = productDTO.CartId
+            };
+
+            //insert product
+            _context.Products.Add(product);
+            await _context.SaveChangesAsync();
+
+            //return the new product details
+            return CreatedAtAction(
+                nameof(GetProductById),
+                new { productId = product.ProductId },
+                ProductsToProductDetailsDTO(product));
+        }
+
         [Route("cartid/{CartId}")]
         [HttpGet]
         public async Task<ActionResult<IEnumerable<ProductDetailsDTO>>> GetProductsByCartId(int CartId)
@@ -52,45 +124,7 @@ namespace ICTS_API_v1.Controllers
             return ProductsToProductDetailsDTO(product);
         }
 
-        [HttpPost]
-        public async Task<ActionResult<ProductDetailsDTO>> AddProductToCart(ProductDTO productDTO)
-        {
-            var mPROCProduct = GetMPROCProductByLotId(productDTO.LotId);
-
-            if (mPROCProduct == null)
-            {
-                return BadRequest();
-            }
-
-            DateTime? expDate;
-            try
-            {
-                expDate = DateTime.Parse(mPROCProduct.USEBEFOREDATE);
-            }
-            catch (FormatException e)
-            {
-                Console.WriteLine("{0} Exception caught.", e);
-                expDate = null;
-            }
-
-            var product = new Product
-            {
-                LotId = mPROCProduct.LOTID,
-                ProductName = mPROCProduct.PRODUCTNAME,
-                ExpirationDate = expDate,
-                Quantity = mPROCProduct.COMPONENTQTY,
-                VirtualSiteName = mPROCProduct.STEPNAME,
-                CartId = productDTO.CartId
-            };
-
-            _context.Products.Add(product);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction(
-                nameof(GetProductById),
-                new { productId = product.ProductId },
-                ProductsToProductDetailsDTO(product));
-        }
+        
         [Route("{ProductId}")]
         [HttpDelete]
         public async Task<IActionResult> RemoveProductFromCart(int ProductId)

@@ -5,17 +5,41 @@ namespace ICTS_API_v1.Models
 {
     public class ProductDetailsDTO
     {
-        public int ProductId { get; set; }
+        public int ProductId
+        {
+            get;
+            set;
+        }
 
-        public string LotId { get; set; }
+        public string LotId
+        {
+            get;
+            set;
+        }
 
-        public string ProductName { get; set; }
+        public string ProductName
+        {
+            get;
+            set;
+        }
 
-        public DateTime? ExpirationDate { get; set; }
+        public DateTime? ExpirationDate
+        {
+            get;
+            set;
+        }
 
-        public int Quantity { get; set; }
+        public int Quantity
+        {
+            get;
+            set;
+        }
 
-        public string VirtualSiteName { get; set; }
+        public string VirtualSiteName
+        {
+            get;
+            set;
+        }
 
         public bool DiscrepancyExists
         {
@@ -36,9 +60,19 @@ namespace ICTS_API_v1.Models
             }
         }
 
-        public int CartId { get; set; }
+        //Foreign Key
+        public int? CartId
+        {
+            get;
+            set;
+        }
 
+        //Navigation Property
         [JsonIgnore]
-        public Cart Cart { get; set; }
+        public Cart Cart
+        {
+            get;
+            set;
+        }
     }
 }

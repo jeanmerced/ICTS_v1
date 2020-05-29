@@ -6,15 +6,29 @@ namespace ICTS_API_v1.Models
 {
     public class CartDetailsDTO
     {
-        public int CartId { get; set; }
+        public int CartId
+        {
+            get;
+            set;
+        }
 
-        public string CartName { get; set; }
+        public string CartName
+        {
+            get;
+            set;
+        }
 
-        public string TagAddress { get; set; }
+        public string TagAddress
+        {
+            get;
+            set;
+        }
 
-        public DateTime? LastUpdated { get; set; }
-
-        // public TYPE Coordinates { get; set; }
+        public DateTime? LastUpdated
+        {
+            get;
+            set;
+        }
 
         public string SiteName
         {
@@ -94,11 +108,21 @@ namespace ICTS_API_v1.Models
                 return expiredWarningCount;
             }
         }
- 
-        [JsonIgnore]
-        public Site Site { get; set; }
 
+        //Navigation Property
         [JsonIgnore]
-        public List<Product> Products { get; set; }
+        public Site Site
+        {
+            get;
+            set;
+        }
+
+        //Navigation Property
+        [JsonIgnore]
+        public List<Product> Products
+        {
+            get;
+            set;
+        }
     }
 }

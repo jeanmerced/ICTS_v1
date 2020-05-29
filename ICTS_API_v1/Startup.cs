@@ -2,6 +2,7 @@ using ICTS_API_v1.Models;
 using ICTS_API_v1.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,6 +26,8 @@ namespace ICTS_API_v1
                 options.UseNpgsql(Configuration.GetConnectionString("DefaultConnection")));
             services.AddControllers();
             services.AddTransient<MPROCProductsService>();
+            services.Configure<ApiBehaviorOptions>(options =>
+                options.SuppressModelStateInvalidFilter = true);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

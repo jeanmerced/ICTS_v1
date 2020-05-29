@@ -5,20 +5,49 @@ namespace ICTS_API_v1.Models
 {
     public class Cart
     {
-        public int CartId { get; set; }
+        public int CartId
+        {
+            get;
+            set;
+        }
 
-        public string CartName { get; set; }
+        public string CartName
+        {
+            get;
+            set;
+        }
 
-        public string TagAddress { get; set; }
+        public string TagAddress
+        {
+            get;
+            set;
+        }
 
-        public DateTime? LastUpdated { get; set; }
+        public DateTime? LastUpdated
+        {
+            get;
+            set;
+        }
 
-        // TODO: public TYPE Coordinates { get; set; }
+        //Foreign Key
+        public int? SiteId
+        { 
+            get;
+            set;
+        }
 
-        public int? SiteId { get; set; } // Foreign Key
+        //Navigation Property
+        public Site Site
+        {
+            get;
+            set;
+        }
 
-        public Site Site { get; set; } // Navigation Property
-
-        public List<Product> Products { get; set; } // Navigation Property
+        //Navigation Property
+        public List<Product> Products
+        {
+            get;
+            set;
+        } 
     }
 }

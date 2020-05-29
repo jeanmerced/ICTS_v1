@@ -19,6 +19,50 @@ namespace ICTS_API_v1.Controllers
             _context = context;
         }
 
+        [HttpPost]
+        public async Task<ActionResult<CartDetailsDTO>> AddCart(CartDTO cartDTO)
+        {
+            var cartNameExists = _context.Carts.Any(c => c.CartName == cartDTO.CartName);
+            var tagAddressExists = _context.Carts.Any(c => c.TagAddress == cartDTO.TagAddress);
+
+            //check if CartName already exists
+            if (cartNameExists)
+            {
+                //add error message
+                ModelState.AddModelError("CartName", "CartName already exists.");
+            }
+
+            //check if TagAddress already exists
+            if (tagAddressExists)
+            {
+                //add error message
+                ModelState.AddModelError("TagAddress", "TagAddress already exists.");
+            }
+
+            //if model is not valid return error messages 
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new { errors = ModelState.ToDictionary(x => x.Key, x => x.Value.Errors.Select(e => e.ErrorMessage).ToArray()) });
+            }
+
+            //create cart
+            var cart = new Cart
+            {
+                CartName = cartDTO.CartName,
+                TagAddress = cartDTO.TagAddress
+            };
+
+            //insert cart
+            _context.Carts.Add(cart);
+            await _context.SaveChangesAsync();
+
+            //return the new cart details
+            return CreatedAtAction(
+                nameof(GetCartByCartId),
+                new { cartId = cart.CartId },
+                CartToCartDetailsDTO(cart));
+        }
+
         [HttpGet]
         public async Task<ActionResult<IEnumerable<CartDetailsDTO>>> GetAllCarts()
         {
@@ -88,23 +132,35 @@ namespace ICTS_API_v1.Controllers
                 .ToListAsync();
         }
 
-        [HttpPost]
-        public async Task<ActionResult<CartDetailsDTO>> AddCart(CartDTO cartDTO)
-        {
-            var cart = new Cart
-            {
-                CartName = "x4JT" + DateTime.Now.Ticks.ToString("x"),
-                TagAddress = cartDTO.TagAddress
-            };
+        //TODO: Update CartName and TagAddress
+        //[HttpPut("{CartId}")]
+        //public async Task<IActionResult> UpdateCart(int CartId, CartLocationDTO cartLocationDTO)
+        //{
+        //    if (CartId != cartLocationDTO.CartId)
+        //    {
+        //        return BadRequest();
+        //    }
 
-            _context.Carts.Add(cart);
-            await _context.SaveChangesAsync();
+        //    var cart = await _context.Carts.FindAsync(CartId);
+        //    if (cart == null)
+        //    {
+        //        return NotFound();
+        //    }
 
-            return CreatedAtAction(
-                nameof(GetCartByCartId),
-                new { cartId = cart.CartId },
-                CartToCartDetailsDTO(cart));
-        }
+        //    cart.LastUpdated = DateTime.Now;
+        //    cart.SiteId = cartLocationDTO.SiteId;
+
+        //    try
+        //    {
+        //        await _context.SaveChangesAsync();
+        //    }
+        //    catch (DbUpdateConcurrencyException) when (!CartExists(CartId))
+        //    {
+        //        return NotFound();
+        //    }
+
+        //    return NoContent();
+        //}
 
         [Route("{CartId}")]
         [HttpDelete]
@@ -114,41 +170,11 @@ namespace ICTS_API_v1.Controllers
 
             if (cart == null)
             {
-                return NotFound(); 
+                return NotFound();
             }
 
             _context.Carts.Remove(cart);
             await _context.SaveChangesAsync();
-
-            return NoContent();
-        }
-
-        [HttpPut("{CartId}")]
-        public async Task<IActionResult> UpdateCart(int CartId, CartLocationDTO cartLocationDTO)
-        {
-            if (CartId != cartLocationDTO.CartId)
-            {
-                return BadRequest();
-            }
-
-            var cart = await _context.Carts.FindAsync(CartId);
-            if (cart == null)
-            {
-                return NotFound();
-            }
-
-            cart.LastUpdated = DateTime.Now;
-            cart.SiteId = cartLocationDTO.SiteId;
-            //cart.Coordinates = cartLocationDTO.Coordinates;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException) when (!CartExists(CartId))
-            {
-                return NotFound();
-            }
 
             return NoContent();
         }
