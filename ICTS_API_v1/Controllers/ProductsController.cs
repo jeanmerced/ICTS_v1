@@ -45,7 +45,7 @@ namespace ICTS_API_v1.Controllers
             //if model is not valid return error messages
             if (!ModelState.IsValid)
             {
-                return BadRequest(new { errors = ModelState.ToDictionary(x => x.Key, x => x.Value.Errors.Select(e => e.ErrorMessage).ToArray()) });
+                return BadRequest(ModelState.ToDictionary(x => x.Key, x => x.Value.Errors.Select(e => e.ErrorMessage).ToArray()));
             }
 
             //looks for product with given lotid from MPROC's data
@@ -56,7 +56,7 @@ namespace ICTS_API_v1.Controllers
             {
                 //add error message
                 ModelState.AddModelError("LotId", "Product with LotId=" + productDTO.LotId + " does not exist.");
-                return BadRequest(new { errors = ModelState.ToDictionary(x => x.Key, x => x.Value.Errors.Select(e => e.ErrorMessage).ToArray()) });
+                return BadRequest(ModelState.ToDictionary(x => x.Key, x => x.Value.Errors.Select(e => e.ErrorMessage).ToArray()));
 
             }
 

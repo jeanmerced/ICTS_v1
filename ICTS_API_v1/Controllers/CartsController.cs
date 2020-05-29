@@ -42,7 +42,7 @@ namespace ICTS_API_v1.Controllers
             //if model is not valid return error messages 
             if (!ModelState.IsValid)
             {
-                return BadRequest(new { errors = ModelState.ToDictionary(x => x.Key, x => x.Value.Errors.Select(e => e.ErrorMessage).ToArray()) });
+                return BadRequest(ModelState.ToDictionary(x => x.Key, x => x.Value.Errors.Select(e => e.ErrorMessage).ToArray()));
             }
 
             //create cart
