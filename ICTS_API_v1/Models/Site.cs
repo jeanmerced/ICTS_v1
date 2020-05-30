@@ -2,10 +2,22 @@
 {
     public class Site
     {
-        public int SiteId { get; set; }
+        public int SiteId
+        {
+            get;
+            set;
+        }
 
-        public string SiteName { get; set; }
+        public string SiteName
+        {
+            get;
+            set;
+        }
 
-        // TODO: public TYPE Coordinates { get; set; }
+        public NpgsqlTypes.NpgsqlBox RefCoordinates
+        {
+            get;
+            set;
+        }
     }
 }

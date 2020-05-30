@@ -22,6 +22,7 @@ namespace ICTS_API_v1.Controllers
         [HttpPost]
         public async Task<ActionResult<CartDetailsDTO>> AddCart(CartDTO cartDTO)
         {
+
             var cartNameExists = _context.Carts.Any(c => c.CartName == cartDTO.CartName);
             var tagAddressExists = _context.Carts.Any(c => c.TagAddress == cartDTO.TagAddress);
 

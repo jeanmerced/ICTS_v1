@@ -1,6 +1,7 @@
 using ICTS_API_v1.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using NpgsqlTypes;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,50 +20,100 @@ namespace ICTS_API_v1.Controllers
             _context = context;
         }
 
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<LocationHistory>>> GetAllLocationHistories()
+        [HttpPost]
+        public async Task<ActionResult<LocationHistoryDetailsDTO>> AddLocationToHistory(LocationHistoryDTO locationHistoryDTO)
         {
-            return await _context.LocationHistories.ToListAsync();
+            var cartIdExists = _context.Carts.Any(c => c.CartId == locationHistoryDTO.CartId);
+            var siteIdExists = _context.Sites.Any(s => s.SiteId == locationHistoryDTO.SiteId);
+
+            //check if cartid exists
+            if (!cartIdExists && locationHistoryDTO.CartId != null)
+            {
+                //add error message
+                ModelState.AddModelError("CartId", "Cart with CartId=" + locationHistoryDTO.CartId + " does not exist.");
+            }
+
+            //check if siteid exists
+            if (!siteIdExists && locationHistoryDTO.SiteId != null)
+            {
+                //add error message
+                ModelState.AddModelError("SiteId", "Site with SiteId=" + locationHistoryDTO.SiteId + " does not exist.");
+            }
+
+            //if model is not valid return error messages
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState.ToDictionary(x => x.Key, x => x.Value.Errors.Select(e => e.ErrorMessage).ToArray()));
+            }
+
+            //tries to parse cart coordinates to NpgsqlPoint. if exception, return bad request
+            var coords = new NpgsqlPoint(); ;
+            try
+            {
+                coords = NpgsqlPoint.Parse(locationHistoryDTO.CartCoordinates);
+            }
+            catch (FormatException e)
+            {
+                Console.WriteLine("{0} Exception caught.", e);
+                //add error message
+                ModelState.AddModelError("CartCoordinates", "Invalid input: CartCoordinates must be specified using the following syntax \'(x,y)\' where x and y are the respective coordinates, as floating-point numbers.");
+                return BadRequest(ModelState.ToDictionary(x => x.Key, x => x.Value.Errors.Select(e => e.ErrorMessage).ToArray()));
+            }
+
+            //create location history
+            var locationHistory = new LocationHistory
+            {
+                CartId = locationHistoryDTO.CartId,
+                SiteId = locationHistoryDTO.SiteId,
+                CartCoordinates = coords,
+                RecordDate = DateTime.Now
+            };
+
+            //insert location history
+            _context.LocationHistories.Add(locationHistory);
+            await _context.SaveChangesAsync();
+
+            //rerturn the new location history details
+            return CreatedAtAction(
+                nameof(GetLocationHistoryByRecordId),
+                new { recordId = locationHistory.RecordId },
+                LocationHistoryToLocationHistoryDetailsDTO(locationHistory));
+        }
+
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<LocationHistoryDetailsDTO>>> GetAllLocationHistories()
+        {
+            return await _context.LocationHistories
+                .Include(lh => lh.Site)
+                .Select(x => LocationHistoryToLocationHistoryDetailsDTO(x))
+                .ToListAsync();
         }
 
         [Route("{RecordId}")]
         [HttpGet]
-        public async Task<ActionResult<LocationHistory>> GetLocationHistoryByRecordId(int RecordId)
+        public async Task<ActionResult<LocationHistoryDetailsDTO>> GetLocationHistoryByRecordId(int RecordId)
         {
-            var locationHistory = await _context.LocationHistories.FirstOrDefaultAsync(lh => lh.RecordId == RecordId);
+            var locationHistory = await _context.LocationHistories
+                .Include(lh => lh.Site)
+                .FirstOrDefaultAsync(lh => lh.RecordId == RecordId);
 
             if (locationHistory == null)
             {
                 return NotFound();
             }
 
-            return locationHistory;
+            return LocationHistoryToLocationHistoryDetailsDTO(locationHistory);
         }
 
         [Route("cartid/{CartId}")]
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<LocationHistory>>> GetLocationHistoriesByCartId(int CartId)
+        public async Task<ActionResult<IEnumerable<LocationHistoryDetailsDTO>>> GetLocationHistoriesByCartId(int CartId)
         {
-            return await _context.LocationHistories.Where(lh => lh.CartId == CartId).ToListAsync();
-        }
-
-        [HttpPost]
-        public async Task<ActionResult<LocationHistory>> AddLocationToHistory(LocationHistoryDTO locationHistoryDTO)
-        {
-            var locationHistory = new LocationHistory
-            {
-                CartId = locationHistoryDTO.CartId,
-                SiteId = locationHistoryDTO.SiteId,
-                RecordDate = DateTime.Now
-            };
-
-            _context.LocationHistories.Add(locationHistory);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction(
-                nameof(GetLocationHistoryByRecordId),
-                new { recordId = locationHistory.RecordId },
-                locationHistory);
+            return await _context.LocationHistories
+                .Include(lh => lh.Site)
+                .Where(lh => lh.CartId == CartId)
+                .Select(x => LocationHistoryToLocationHistoryDetailsDTO(x))
+                .ToListAsync();
         }
 
         [Route("{RecordId}")]
@@ -82,12 +133,22 @@ namespace ICTS_API_v1.Controllers
             return NoContent();
         }
 
-        //TODO:UpdateLocationHistories*********************************************************************************
+        //TODO: UpdateLocationHistories
         //[Route("location-histories")]
         //[HttpPut]
         //public void UpdateLocationHistories()
         //{
 
         //}
+
+        private static LocationHistoryDetailsDTO LocationHistoryToLocationHistoryDetailsDTO(LocationHistory locationHistory) =>
+            new LocationHistoryDetailsDTO
+            {
+                RecordId = locationHistory.RecordId,
+                CartId = locationHistory.CartId,
+                CartCoordinates = locationHistory.CartCoordinates,
+                RecordDate = locationHistory.RecordDate,
+                Site = locationHistory.Site
+            };
     }
 }

@@ -39,7 +39,7 @@ namespace ICTS_API_v1.Controllers
             if (productInCart)
             {
                 //add error message
-                ModelState.AddModelError("LotId", "Product with LotId=" + productDTO.LotId + " is already associated with another cart.");
+                ModelState.AddModelError("LotId", "Product with LotId=" + productDTO.LotId + " is already associated to a cart.");
             }
 
             //if model is not valid return error messages

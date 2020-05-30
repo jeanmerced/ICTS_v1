@@ -1,12 +1,11 @@
 ﻿using System;
-using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using NpgsqlTypes;
 
 namespace ICTS_API_v1.Models
 {
-    public class LocationHistory
+    public class LocationHistoryDetailsDTO
     {
-        [Key]
         public int RecordId
         {
             get;
@@ -25,24 +24,31 @@ namespace ICTS_API_v1.Models
             set;
         }
 
+        public string SiteName
+        {
+            get
+            {
+                string siteName = "UNKNOWN";
+                if (Site != null)
+                {
+                    siteName = Site.SiteName;
+                }
+                return siteName;
+            }
+        }
+
         public DateTime RecordDate
         {
             get;
             set;
         }
 
-        //Foreign Key
-        public int? SiteId
-        {
-            get;
-            set;
-        }
-
         //Navigation Property
+        [JsonIgnore]
         public Site Site
         {
-            get;
             set;
+            get;
         }
     }
 }
