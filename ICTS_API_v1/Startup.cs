@@ -10,13 +10,23 @@ using Microsoft.Extensions.Hosting;
 
 namespace ICTS_API_v1
 {
+    /// <summary>
+    /// Services required by the app are configured.
+    /// The app's request handling pipeline is defined, as a series of middleware components.
+    /// </summary>
     public class Startup
     {
+        /// <summary>
+        /// Constructor for Startup
+        /// </summary>
+        /// <param name="configuration">Configuration properties</param>
+        /// <returns>Startup object</returns>
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
         }
 
+        //Configuration properties
         public IConfiguration Configuration { get; }
 
         // This method gets called by the runtime. Use this method to add services to the container.

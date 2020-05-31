@@ -8,17 +8,33 @@ using System.Threading.Tasks;
 
 namespace ICTS_API_v1.Controllers
 {
+    /// <summary>
+    /// Controller class for carts.
+    /// Controller and its action method handles incoming browser requests,
+    /// retrieves necessary model data and returns appropriate responses.
+    /// </summary>
     [Route("carts")]
     [ApiController]
     public class CartsController : Controller
     {
-        private readonly ICTS_Context _context;
+        //DBContext
+        private readonly ICTS_Context _context; 
 
+        /// <summary>
+        /// Constructor for CartsController
+        /// </summary>
+        /// <param name="context">DB context</param>
+        /// <returns>CartsController object</returns>
         public CartsController(ICTS_Context context)
         {
             _context = context;
         }
 
+        /// <summary>
+        /// Creates a cart and inserts into database
+        /// </summary>
+        /// <param name="cartDTO">Data transfer object for creating a cart</param>
+        /// <returns>Action result containing data transfer object for cart details of created cart</returns>
         [HttpPost]
         public async Task<ActionResult<CartDetailsDTO>> AddCart(CartDTO cartDTO)
         {
@@ -66,11 +82,16 @@ namespace ICTS_API_v1.Controllers
             }
             catch (InvalidOperationException e)
             {
+                //if exception is caught write to console and return error message
                 Console.WriteLine("{0} Exception caught.", e);
                 return BadRequest(new { ApiProblem = "Invalid JSON format sent." });
             }
         }
 
+        /// <summary>
+        /// Selects all carts in the database
+        /// </summary>
+        /// <returns>Action result containing list of data transfer objects for cart details of all carts</returns>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<CartDetailsDTO>>> GetAllCarts()
         {
@@ -81,15 +102,22 @@ namespace ICTS_API_v1.Controllers
                 .ToListAsync();
         }
 
+        /// <summary>
+        /// Selects a cart from database matching given cart id
+        /// </summary>
+        /// <param name="CartId">Cart id of the cart</param>
+        /// <returns>Action result containing data transfer object for cart details of selected cart</returns>
         [Route("{CartId}")]
         [HttpGet]
         public async Task<ActionResult<CartDetailsDTO>> GetCartByCartId(int CartId)
         {
+            //find cart
             var cart = await _context.Carts
                 .Include(c => c.Products)
                 .Include(c => c.Site)
                 .FirstOrDefaultAsync(c => c.CartId == CartId);
 
+            //if cart not found return error
             if (cart == null)
             {
                 return NotFound();
@@ -98,16 +126,23 @@ namespace ICTS_API_v1.Controllers
             return CartToCartDetailsDTO(cart);
         }
 
+        /// <summary>
+        /// Selects the cart from database containing a product with given lot id
+        /// </summary>
+        /// <param name="LotId">Lot id of the product</param>
+        /// <returns>Action result containing data transfer object for cart details of selected cart</returns>
         [Route("lotid/{LotId}")]
         [HttpGet]
         public async Task<ActionResult<CartDetailsDTO>> GetCartByProductLotId(string LotId)
         {
+            //find cart
             var cart = await _context.Carts
                 .Include(c => c.Products)
                 .Include(c => c.Site)
                 .Where(c => c.Products.Any(p => p.LotId == LotId))
                 .FirstOrDefaultAsync();
 
+            //if cart not found return error
             if (cart == null)
             {
                 return NotFound();
@@ -116,6 +151,11 @@ namespace ICTS_API_v1.Controllers
             return CartToCartDetailsDTO(cart);
         }
 
+        /// <summary>
+        /// Selects all carts from database containing products with given product name
+        /// </summary>
+        /// <param name="ProductName">Product name of the product</param>
+        /// <returns>Action result containing list of data transfer objects for cart details of selected carts</returns>
         [Route("productname/{ProductName}")]
         [HttpGet]
         public async Task<ActionResult<IEnumerable<CartDetailsDTO>>> GetCartsByProductName(string ProductName)
@@ -128,6 +168,11 @@ namespace ICTS_API_v1.Controllers
                 .ToListAsync();
         }
 
+        /// <summary>
+        /// Selects all carts from database containing products with given expiratio date
+        /// </summary>
+        /// <param name="ExpirationDate">Expiration date of the product</param>
+        /// <returns>Action result containing list of data transfer objects for cart details of selected carts</returns>
         [Route("expirationdate/{ExpirationDate}")]
         [HttpGet]
         public async Task<ActionResult<IEnumerable<CartDetailsDTO>>> GetCartsByProductExpirationDate(DateTime ExpirationDate)
@@ -140,11 +185,18 @@ namespace ICTS_API_v1.Controllers
                 .ToListAsync();
         }
 
+        /// <summary>
+        /// Updates the cart name and/or tag address of the cart matching given cart id 
+        /// </summary>
+        /// <param name="CartId">Cart id of the cart</param>
+        /// <param name="cartUpdateDTO">Data transfer object for updating a cart</param>
+        /// <returns>IAction result with corresponding status code</returns>
         [HttpPut("{CartId}")]
         public async Task<IActionResult> UpdateCart(int CartId, CartUpdateDTO cartUpdateDTO)
         {
             try
-            { 
+            {
+                //check if cart id matched id requested
                 if (cartUpdateDTO.CartId != null)
                 {
                     if (CartId != cartUpdateDTO.CartId)
@@ -194,15 +246,20 @@ namespace ICTS_API_v1.Controllers
                     return BadRequest(ModelState.ToDictionary(x => x.Key, x => x.Value.Errors.Select(e => e.ErrorMessage).ToArray()));
                 }
 
+                //find cart
                 var cart = await _context.Carts.FindAsync(CartId);
+
+                //if site not found return error 
                 if (cart == null)
                 {
                     return NotFound();
                 }
 
+                //update cart
                 cart.CartName = cartUpdateDTO.CartName;
                 cart.TagAddress = cartUpdateDTO.TagAddress;
 
+                //put cart
                 try
                 {
                     await _context.SaveChangesAsync();
@@ -216,31 +273,50 @@ namespace ICTS_API_v1.Controllers
             }
             catch (NullReferenceException e)
             {
+                //if exception is caught write to console and return error message
                 Console.WriteLine("{0} Exception caught.", e);
                 return BadRequest(new { ApiProblem = "Invalid JSON format sent." });
             }
         }
 
+        /// <summary>
+        /// Deletes the cart that matches given cart id 
+        /// </summary>
+        /// <param name="CartId">Cart id of the cart</param>
+        /// <returns>IAction result with corresponding status code</returns>
         [Route("{CartId}")]
         [HttpDelete]
         public async Task<IActionResult> RemoveCart(int CartId)
         {
+            //find cart
             var cart = await _context.Carts.FindAsync(CartId);
 
+            //if cart not found return error
             if (cart == null)
             {
                 return NotFound();
             }
 
+            //delete cart
             _context.Carts.Remove(cart);
             await _context.SaveChangesAsync();
 
             return NoContent();
         }
 
+        /// <summary>
+        /// Private method for determining if cart with given cart id exists 
+        /// </summary>
+        /// <param name="CartId">Cart id of the cart</param>
+        /// <returns>Boolean value of the expression</returns>
         private bool CartExists(int CartId) =>
              _context.Carts.Any(c => c.CartId == CartId);
 
+        /// <summary>
+        /// Private method for creating a CartDetailsDTO from a Cart
+        /// </summary>
+        /// <param name="cart">Cart to be used</param>
+        /// <returns>Data transfer object for cart details</returns>
         private static CartDetailsDTO CartToCartDetailsDTO(Cart cart) =>
             new CartDetailsDTO
             {
