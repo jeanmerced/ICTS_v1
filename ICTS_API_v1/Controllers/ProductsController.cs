@@ -25,73 +25,81 @@ namespace ICTS_API_v1.Controllers
         [HttpPost]
         public async Task<ActionResult<ProductDetailsDTO>> AddProductToCart(ProductDTO productDTO)
         {
-            var cartIdExists = _context.Carts.Any(c => c.CartId == productDTO.CartId);
-            var productInCart = _context.Products.Any(p => p.LotId == productDTO.LotId);
-
-            //check if cartid exists
-            if (!cartIdExists && productDTO.CartId != null)
-            {
-                //add error message
-                ModelState.AddModelError("CartId", "Cart with CartId=" + productDTO.CartId + " does not exist.");
-            }
-
-            //check if product is already associated with another cart
-            if (productInCart)
-            {
-                //add error message
-                ModelState.AddModelError("LotId", "Product with LotId=" + productDTO.LotId + " is already associated to a cart.");
-            }
-
-            //if model is not valid return error messages
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState.ToDictionary(x => x.Key, x => x.Value.Errors.Select(e => e.ErrorMessage).ToArray()));
-            }
-
-            //looks for product with given lotid from MPROC's data
-            var mPROCProduct = GetMPROCProductByLotId(productDTO.LotId);
-
-            //if product does not exist in MPROC's data return error message
-            if (mPROCProduct == null)
-            {
-                //add error message
-                ModelState.AddModelError("LotId", "Product with LotId=" + productDTO.LotId + " does not exist.");
-                return BadRequest(ModelState.ToDictionary(x => x.Key, x => x.Value.Errors.Select(e => e.ErrorMessage).ToArray()));
-
-            }
-
-            //tries to parse expiration date to DateTime. if exception, expDate = null
-            DateTime? expDate;
             try
             {
-                expDate = DateTime.Parse(mPROCProduct.USEBEFOREDATE);
+                var cartIdExists = _context.Carts.Any(c => c.CartId == productDTO.CartId);
+                var productInCart = _context.Products.Any(p => p.LotId == productDTO.LotId);
+
+                //check if cartid exists
+                if (!cartIdExists && productDTO.CartId != null)
+                {
+                    //add error message
+                    ModelState.AddModelError("CartId", "No cart found with given cart id.");
+                }
+
+                //check if product is already associated with another cart
+                if (productInCart)
+                {
+                    //add error message
+                    ModelState.AddModelError("LotId", "Product already added to a cart.");
+                }
+
+                //if model is not valid return error messages
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState.ToDictionary(x => x.Key, x => x.Value.Errors.Select(e => e.ErrorMessage).ToArray()));
+                }
+
+                //looks for product with given lotid from MPROC's data
+                var mPROCProduct = GetMPROCProductByLotId(productDTO.LotId);
+
+                //if product does not exist in MPROC's data return error message
+                if (mPROCProduct == null)
+                {
+                    //add error message
+                    ModelState.AddModelError("LotId", "No product found with given lot id.");
+                    return BadRequest(ModelState.ToDictionary(x => x.Key, x => x.Value.Errors.Select(e => e.ErrorMessage).ToArray()));
+
+                }
+
+                //tries to parse expiration date to DateTime. if exception, expDate = null
+                DateTime? expDate;
+                try
+                {
+                    expDate = DateTime.Parse(mPROCProduct.USEBEFOREDATE);
+                }
+                catch (FormatException e)
+                {
+                    Console.WriteLine("{0} Exception caught.", e);
+                    expDate = null;
+                }
+
+                //create product
+                var product = new Product
+                {
+                    LotId = mPROCProduct.LOTID,
+                    ProductName = mPROCProduct.PRODUCTNAME,
+                    ExpirationDate = expDate,
+                    Quantity = mPROCProduct.COMPONENTQTY,
+                    VirtualSiteName = mPROCProduct.STEPNAME,
+                    CartId = productDTO.CartId
+                };
+
+                //insert product
+                _context.Products.Add(product);
+                await _context.SaveChangesAsync();
+
+                //return the new product details
+                return CreatedAtAction(
+                    nameof(GetProductById),
+                    new { productId = product.ProductId },
+                    ProductsToProductDetailsDTO(product));
             }
-            catch (FormatException e)
+            catch (InvalidOperationException e)
             {
                 Console.WriteLine("{0} Exception caught.", e);
-                expDate = null;
+                return BadRequest(new { ApiProblem = "Invalid JSON format sent." });
             }
-
-            //create product
-            var product = new Product
-            {
-                LotId = mPROCProduct.LOTID,
-                ProductName = mPROCProduct.PRODUCTNAME,
-                ExpirationDate = expDate,
-                Quantity = mPROCProduct.COMPONENTQTY,
-                VirtualSiteName = mPROCProduct.STEPNAME,
-                CartId = productDTO.CartId
-            };
-
-            //insert product
-            _context.Products.Add(product);
-            await _context.SaveChangesAsync();
-
-            //return the new product details
-            return CreatedAtAction(
-                nameof(GetProductById),
-                new { productId = product.ProductId },
-                ProductsToProductDetailsDTO(product));
         }
 
         [Route("cartid/{CartId}")]
@@ -142,13 +150,61 @@ namespace ICTS_API_v1.Controllers
             return NoContent();
         }
 
-        // TODO:UpdateProduct
-        //[Route("products")]
-        //[HttpPut]
-        //public async Task<ActionResult<Product>> UpdateProduct(int CartID, [FromBody]string TagAddress)
-        //{
-        //    return null;
-        //}
+
+        [Route("{ProductId}")]
+        [HttpPut]
+        public async Task<IActionResult> UpdateProduct(int ProductId, ProductUpdateDTO productUpdateDTO)
+        {
+            try
+            {
+                if (productUpdateDTO.ProductId != null)
+                {
+                    if (ProductId != productUpdateDTO.ProductId)
+                    {
+                        return BadRequest(new { ApiProblem = "Entity Id does not match requested Id." });
+                    }
+                }
+
+                var productIdExists = _context.Products.Any(p => p.ProductId == productUpdateDTO.ProductId);
+
+                //check if product id does not exist
+                if (!productIdExists && productUpdateDTO.ProductId != null)
+                {
+                    //add error message
+                    ModelState.AddModelError("ProductId", "No product found with given product id.");
+                }
+
+                //if model is not valid return error messages 
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState.ToDictionary(x => x.Key, x => x.Value.Errors.Select(e => e.ErrorMessage).ToArray()));
+                }
+
+                var product = await _context.Products.FindAsync(ProductId);
+                if (product == null)
+                {
+                    return NotFound();
+                }
+
+                product.VirtualSiteName = productUpdateDTO.VirtualSiteName;
+
+                try
+                {
+                    await _context.SaveChangesAsync();
+                }
+                catch (DbUpdateConcurrencyException) when (!ProductExists(ProductId))
+                {
+                    return NotFound();
+                }
+
+                return NoContent();
+            }
+            catch (NullReferenceException e)
+            {
+                Console.WriteLine("{0} Exception caught.", e);
+                return BadRequest(new { ApiProblem = "Invalid JSON format sent." });
+            }
+        }
 
         private MPROCProduct GetMPROCProductByLotId(string LotId)
         {
@@ -160,6 +216,10 @@ namespace ICTS_API_v1.Controllers
             }
             return null;
         }
+
+        private bool ProductExists(int ProductId) =>
+             _context.Products.Any(p => p.ProductId == ProductId);
+
 
         private static ProductDetailsDTO ProductsToProductDetailsDTO(Product product) =>
             new ProductDetailsDTO

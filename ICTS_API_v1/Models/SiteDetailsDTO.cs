@@ -1,7 +1,7 @@
 ﻿
 namespace ICTS_API_v1.Models
 {
-    public class Site
+    public class SiteDetailsDTO
     {
         public int SiteId
         {

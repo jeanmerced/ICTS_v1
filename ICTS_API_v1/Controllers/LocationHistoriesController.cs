@@ -23,61 +23,69 @@ namespace ICTS_API_v1.Controllers
         [HttpPost]
         public async Task<ActionResult<LocationHistoryDetailsDTO>> AddLocationToHistory(LocationHistoryDTO locationHistoryDTO)
         {
-            var cartIdExists = _context.Carts.Any(c => c.CartId == locationHistoryDTO.CartId);
-            var siteIdExists = _context.Sites.Any(s => s.SiteId == locationHistoryDTO.SiteId);
-
-            //check if cartid exists
-            if (!cartIdExists && locationHistoryDTO.CartId != null)
-            {
-                //add error message
-                ModelState.AddModelError("CartId", "Cart with CartId=" + locationHistoryDTO.CartId + " does not exist.");
-            }
-
-            //check if siteid exists
-            if (!siteIdExists && locationHistoryDTO.SiteId != null)
-            {
-                //add error message
-                ModelState.AddModelError("SiteId", "Site with SiteId=" + locationHistoryDTO.SiteId + " does not exist.");
-            }
-
-            //if model is not valid return error messages
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState.ToDictionary(x => x.Key, x => x.Value.Errors.Select(e => e.ErrorMessage).ToArray()));
-            }
-
-            //tries to parse cart coordinates to NpgsqlPoint. if exception, return bad request
-            var coords = new NpgsqlPoint(); ;
             try
             {
-                coords = NpgsqlPoint.Parse(locationHistoryDTO.CartCoordinates);
+                var cartIdExists = _context.Carts.Any(c => c.CartId == locationHistoryDTO.CartId);
+                var siteIdExists = _context.Sites.Any(s => s.SiteId == locationHistoryDTO.SiteId);
+
+                //check if cartid exists
+                if (!cartIdExists && locationHistoryDTO.CartId != null)
+                {
+                    //add error message
+                    ModelState.AddModelError("CartId", "No cart found with given cart id.");
+                }
+
+                //check if siteid exists
+                if (!siteIdExists && locationHistoryDTO.SiteId != null)
+                {
+                    //add error message
+                    ModelState.AddModelError("SiteId", "No site found with given site id.");
+                }
+
+                //if model is not valid return error messages
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState.ToDictionary(x => x.Key, x => x.Value.Errors.Select(e => e.ErrorMessage).ToArray()));
+                }
+
+                //tries to parse cart coordinates to NpgsqlPoint. if exception, return bad request
+                var coords = new NpgsqlPoint(); ;
+                try
+                {
+                    coords = NpgsqlPoint.Parse(locationHistoryDTO.CartCoordinates);
+                }
+                catch (FormatException e)
+                {
+                    Console.WriteLine("{0} Exception caught.", e);
+                    //add error message
+                    ModelState.AddModelError("CartCoordinates", "Invalid input: CartCoordinates must be specified using the following syntax \'(x,y)\' where x and y are the respective coordinates, as floating-point numbers.");
+                    return BadRequest(ModelState.ToDictionary(x => x.Key, x => x.Value.Errors.Select(e => e.ErrorMessage).ToArray()));
+                }
+
+                //create location history
+                var locationHistory = new LocationHistory
+                {
+                    CartId = locationHistoryDTO.CartId,
+                    SiteId = locationHistoryDTO.SiteId,
+                    CartCoordinates = coords,
+                    RecordDate = DateTime.Now
+                };
+
+                //insert location history
+                _context.LocationHistories.Add(locationHistory);
+                await _context.SaveChangesAsync();
+
+                //rerturn the new location history details
+                return CreatedAtAction(
+                    nameof(GetLocationHistoryByRecordId),
+                    new { recordId = locationHistory.RecordId },
+                    LocationHistoryToLocationHistoryDetailsDTO(locationHistory));
             }
-            catch (FormatException e)
+            catch (InvalidOperationException e)
             {
                 Console.WriteLine("{0} Exception caught.", e);
-                //add error message
-                ModelState.AddModelError("CartCoordinates", "Invalid input: CartCoordinates must be specified using the following syntax \'(x,y)\' where x and y are the respective coordinates, as floating-point numbers.");
-                return BadRequest(ModelState.ToDictionary(x => x.Key, x => x.Value.Errors.Select(e => e.ErrorMessage).ToArray()));
+                return BadRequest(new { ApiProblem = "Invalid JSON format sent." });
             }
-
-            //create location history
-            var locationHistory = new LocationHistory
-            {
-                CartId = locationHistoryDTO.CartId,
-                SiteId = locationHistoryDTO.SiteId,
-                CartCoordinates = coords,
-                RecordDate = DateTime.Now
-            };
-
-            //insert location history
-            _context.LocationHistories.Add(locationHistory);
-            await _context.SaveChangesAsync();
-
-            //rerturn the new location history details
-            return CreatedAtAction(
-                nameof(GetLocationHistoryByRecordId),
-                new { recordId = locationHistory.RecordId },
-                LocationHistoryToLocationHistoryDetailsDTO(locationHistory));
         }
 
         [HttpGet]
@@ -132,14 +140,6 @@ namespace ICTS_API_v1.Controllers
 
             return NoContent();
         }
-
-        //TODO: UpdateLocationHistories
-        //[Route("location-histories")]
-        //[HttpPut]
-        //public void UpdateLocationHistories()
-        //{
-
-        //}
 
         private static LocationHistoryDetailsDTO LocationHistoryToLocationHistoryDetailsDTO(LocationHistory locationHistory) =>
             new LocationHistoryDetailsDTO

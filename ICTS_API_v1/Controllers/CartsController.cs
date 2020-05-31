@@ -22,46 +22,53 @@ namespace ICTS_API_v1.Controllers
         [HttpPost]
         public async Task<ActionResult<CartDetailsDTO>> AddCart(CartDTO cartDTO)
         {
-
-            var cartNameExists = _context.Carts.Any(c => c.CartName == cartDTO.CartName);
-            var tagAddressExists = _context.Carts.Any(c => c.TagAddress == cartDTO.TagAddress);
-
-            //check if CartName already exists
-            if (cartNameExists)
+            try
             {
-                //add error message
-                ModelState.AddModelError("CartName", "CartName already exists.");
+                var cartNameExists = _context.Carts.Any(c => c.CartName == cartDTO.CartName);
+                var tagAddressExists = _context.Carts.Any(c => c.TagAddress == cartDTO.TagAddress);
+
+                //check if CartName already exists
+                if (cartNameExists)
+                {
+                    //add error message
+                    ModelState.AddModelError("CartName", "CartName already exists.");
+                }
+
+                //check if TagAddress already exists
+                if (tagAddressExists)
+                {
+                    //add error message
+                    ModelState.AddModelError("TagAddress", "TagAddress already exists.");
+                }
+
+                //if model is not valid return error messages 
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState.ToDictionary(x => x.Key, x => x.Value.Errors.Select(e => e.ErrorMessage).ToArray()));
+                }
+
+                //create cart
+                var cart = new Cart
+                {
+                    CartName = cartDTO.CartName,
+                    TagAddress = cartDTO.TagAddress
+                };
+
+                //insert cart
+                _context.Carts.Add(cart);
+                await _context.SaveChangesAsync();
+
+                //return the new cart details
+                return CreatedAtAction(
+                    nameof(GetCartByCartId),
+                    new { cartId = cart.CartId },
+                    CartToCartDetailsDTO(cart));
             }
-
-            //check if TagAddress already exists
-            if (tagAddressExists)
+            catch (InvalidOperationException e)
             {
-                //add error message
-                ModelState.AddModelError("TagAddress", "TagAddress already exists.");
+                Console.WriteLine("{0} Exception caught.", e);
+                return BadRequest(new { ApiProblem = "Invalid JSON format sent." });
             }
-
-            //if model is not valid return error messages 
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState.ToDictionary(x => x.Key, x => x.Value.Errors.Select(e => e.ErrorMessage).ToArray()));
-            }
-
-            //create cart
-            var cart = new Cart
-            {
-                CartName = cartDTO.CartName,
-                TagAddress = cartDTO.TagAddress
-            };
-
-            //insert cart
-            _context.Carts.Add(cart);
-            await _context.SaveChangesAsync();
-
-            //return the new cart details
-            return CreatedAtAction(
-                nameof(GetCartByCartId),
-                new { cartId = cart.CartId },
-                CartToCartDetailsDTO(cart));
         }
 
         [HttpGet]
@@ -133,35 +140,86 @@ namespace ICTS_API_v1.Controllers
                 .ToListAsync();
         }
 
-        //TODO: Update CartName and TagAddress
-        //[HttpPut("{CartId}")]
-        //public async Task<IActionResult> UpdateCart(int CartId, CartLocationDTO cartLocationDTO)
-        //{
-        //    if (CartId != cartLocationDTO.CartId)
-        //    {
-        //        return BadRequest();
-        //    }
+        [HttpPut("{CartId}")]
+        public async Task<IActionResult> UpdateCart(int CartId, CartUpdateDTO cartUpdateDTO)
+        {
+            try
+            { 
+                if (cartUpdateDTO.CartId != null)
+                {
+                    if (CartId != cartUpdateDTO.CartId)
+                    {
+                        return BadRequest(new { ApiProblem = "Entity Id does not match requested Id." });
+                    }
+                }
 
-        //    var cart = await _context.Carts.FindAsync(CartId);
-        //    if (cart == null)
-        //    {
-        //        return NotFound();
-        //    }
+                var cartIdExists = _context.Carts.Any(c => c.CartId == cartUpdateDTO.CartId);
+                var cartNameExists = _context.Carts.Any(c => c.CartName == cartUpdateDTO.CartName);
+                var tagAddressExists = _context.Carts.Any(c => c.TagAddress == cartUpdateDTO.TagAddress);
 
-        //    cart.LastUpdated = DateTime.Now;
-        //    cart.SiteId = cartLocationDTO.SiteId;
+                //check if cartid does not exist
+                if (!cartIdExists && cartUpdateDTO.CartId != null)
+                {
+                    //add error message
+                    ModelState.AddModelError("CartId", "No cart found with given cart id.");
+                }
 
-        //    try
-        //    {
-        //        await _context.SaveChangesAsync();
-        //    }
-        //    catch (DbUpdateConcurrencyException) when (!CartExists(CartId))
-        //    {
-        //        return NotFound();
-        //    }
+                //check if CartName already exists
+                if (cartNameExists)
+                {
+                    //check if the cart is another cart
+                    var theCart = _context.Carts.Where(c => c.CartName == cartUpdateDTO.CartName).FirstOrDefault();
+                    if (theCart.CartId != cartUpdateDTO.CartId)
+                    {
+                        //add error message
+                        ModelState.AddModelError("CartName", "CartName already exists.");
+                    }
+                }
 
-        //    return NoContent();
-        //}
+                //check if TagAddress already exists
+                if (tagAddressExists)
+                {
+                    //check if the cart is another cart
+                    var theCart = _context.Carts.Where(c => c.TagAddress == cartUpdateDTO.TagAddress).FirstOrDefault();
+                    if (theCart.CartId != cartUpdateDTO.CartId)
+                    {
+                        //add error message
+                        ModelState.AddModelError("TagAddress", "TagAddress already exists.");
+                    }
+                }
+
+                //if model is not valid return error messages 
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState.ToDictionary(x => x.Key, x => x.Value.Errors.Select(e => e.ErrorMessage).ToArray()));
+                }
+
+                var cart = await _context.Carts.FindAsync(CartId);
+                if (cart == null)
+                {
+                    return NotFound();
+                }
+
+                cart.CartName = cartUpdateDTO.CartName;
+                cart.TagAddress = cartUpdateDTO.TagAddress;
+
+                try
+                {
+                    await _context.SaveChangesAsync();
+                }
+                catch (DbUpdateConcurrencyException) when (!CartExists(CartId))
+                {
+                    return NotFound();
+                }
+
+                return NoContent();
+            }
+            catch (NullReferenceException e)
+            {
+                Console.WriteLine("{0} Exception caught.", e);
+                return BadRequest(new { ApiProblem = "Invalid JSON format sent." });
+            }
+        }
 
         [Route("{CartId}")]
         [HttpDelete]
